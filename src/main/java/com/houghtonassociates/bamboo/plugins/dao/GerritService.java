@@ -198,6 +198,15 @@ public class GerritService {
         return gQueryHandler;
     }
 
+    /**
+     * Runs given Gerrit query with the Gerrit API.
+     * 
+     * @param query
+     *            query to execute
+     * @return object returned by the API or {@code null} if there were problems with the query
+     * @throws RepositoryException
+     *             if something went really wrong
+     */
     public List<JSONObject> runGerritQuery(String query) throws RepositoryException {
         List<JSONObject> jsonObjects = null;
 
@@ -207,22 +216,18 @@ public class GerritService {
             jsonObjects = getGerritQueryHandler().queryJava(query, true, true, true);
         } catch (SshException e) {
             throw new RepositoryException("SSH connection error", e);
-        } catch (IOException e) {
-            throw new RepositoryException(e.getMessage());
-        } catch (GerritQueryException e) {
+        } catch (IOException | GerritQueryException e) {
             throw new RepositoryException(e.getMessage());
         }
 
         if (jsonObjects == null || jsonObjects.isEmpty()) {
-			return null;
-		}
+            return null;
+        }
 
         JSONObject setInfo = jsonObjects.get(jsonObjects.size() - 1);
 
         int rowCount = setInfo.getInt(GerritChangeVO.JSON_KEY_ROWCOUNT);
-
         log.debug("Gerrit row count: " + rowCount);
-
         if (rowCount == 0) {
             log.debug("No JSON content to report.");
             return null;
@@ -232,18 +237,6 @@ public class GerritService {
         }
 
         return jsonObjects;
-    }
-
-    public GerritChangeVO
-                    getLastChange(String project) throws RepositoryException {
-        log.debug(String.format("getLastChange(project=%s)...", project));
-
-        List<GerritChangeVO> changes = getGerritChangeInfo(project, 1);
-        if (!changes.isEmpty()) {
-            return changes.get(0);
-        }
-
-        return null;
     }
 
     /**
@@ -291,17 +284,21 @@ public class GerritService {
         return this.transformJSONObject(jsonObjects.get(0));
     }
 
+    /**
+     * Retrieves the change id by the revision number.
+     * 
+     * @param rev
+     *            revision number to check
+     * @return gerrit's change for the specified revision
+     * @throws RepositoryException
+     *             when something went wrong
+     */
     public GerritChangeVO getChangeByRevision(String rev) throws RepositoryException {
         log.debug(String.format("getChangeByRevision(rev=%s)...", rev));
-
-        List<JSONObject> jsonObjects = null;
-
-        jsonObjects = runGerritQuery(String.format("commit:%s", rev));
-
+        List<JSONObject> jsonObjects = runGerritQuery(String.format("commit:%s", rev));
         if (jsonObjects == null) {
-			return null;
-		}
-
+            return null;
+        }
         return this.transformJSONObject(jsonObjects.get(0));
     }
     

@@ -70,7 +70,6 @@ import com.houghtonassociates.bamboo.plugins.dao.GerritChangeVO;
 import com.houghtonassociates.bamboo.plugins.dao.GerritChangeVO.FileSet;
 import com.houghtonassociates.bamboo.plugins.dao.GerritService;
 import com.houghtonassociates.bamboo.plugins.dao.GitRepoFactory;
-import com.opensymphony.xwork.TextProvider;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.GerritConnectionConfig;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.ssh.Authentication;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.ssh.SshConnection;
@@ -463,11 +462,6 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
         gitRepository.setTemplateRenderer(templateRenderer);
     }
 
-    @Override
-    public synchronized void setTextProvider(TextProvider textProvider) {
-        super.setTextProvider(textProvider);
-    }
-
     public void setSshProxyService(SshProxyService sshProxyService) {
         this.sshProxyService = sshProxyService;
         gitRepository.setSshProxyService(sshProxyService);
@@ -555,46 +549,27 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
     }
 
     @Override
-    public BuildRepositoryChanges
-                    collectChangesSinceLastBuild(String planKey,
-                                                 String lastVcsRevisionKey) throws RepositoryException {
+    public BuildRepositoryChanges collectChangesSinceLastBuild(String planKey, String lastVcsRevisionKey) throws RepositoryException {
 
-        final BuildLogger buildLogger =
-            buildLoggerManager.getBuildLogger(PlanKeys.getPlanKey(planKey));
+        final BuildLogger buildLogger = buildLoggerManager.getBuildLogger(PlanKeys.getPlanKey(planKey));
         List<Commit> commits = new ArrayList<Commit>();
 
-        GerritChangeVO change =
-            getGerritDAO().getOldestUnverifiedChange(project, additionalQueryParams);
+        GerritChangeVO change = getGerritDAO().getOldestUnverifiedChange(project, additionalQueryParams);
 
         if (change == null) {
-            // TODO this is a good place to cancel the build, as there are no changes that explicity match the build criteria
-            // for now - read last change
-            change = getGerritDAO().getLastChange(project);
+            // no changes found with the configured criteria, fail the build
+            throw new RepositoryException(textProvider.getText("processor.gerrit.messages.build.error.nochanges"));
         }
 
-        buildLogger.addBuildLogEntry(textProvider
-            .getText("repository.gerrit.messages.ccRecover.completed"));
+        buildLogger.addBuildLogEntry(textProvider.getText("repository.gerrit.messages.ccRecover.completed"));
 
-        if ((change == null) && (lastVcsRevisionKey == null)) {
-            throw new RepositoryException(
-                textProvider
-                    .getText("processor.gerrit.messages.build.error.nochanges"));
-        } else if (change == null) {
-            buildLogger.addBuildLogEntry(textProvider
-                .getText("processor.gerrit.messages.build.verified.None"));
-            GitRepoFactory.configureBranchMaster(gitRepository);
-            return gitRepository.collectChangesSinceLastBuild(planKey,
-                lastVcsRevisionKey);
-        } else if (lastVcsRevisionKey == null) {
-            buildLogger.addBuildLogEntry(textProvider.getText(
-                "repository.gerrit.messages.ccRepositoryNeverChecked",
-                Arrays.asList(change.getLastRevision())));
+        if (lastVcsRevisionKey == null) {
+            buildLogger.addBuildLogEntry(textProvider.getText("repository.gerrit.messages.ccRepositoryNeverChecked",
+                    Arrays.asList(change.getLastRevision())));
         } else if (change.getLastRevision().equals(lastVcsRevisionKey)) {
             return new BuildRepositoryChangesImpl(change.getLastRevision());
         } else {
-            Object lastDate =
-                bandanaManager.getValue(new GerritBandanaContext(),
-                    GerritChangeVO.JSON_KEY_ID);
+            Object lastDate = bandanaManager.getValue(new GerritBandanaContext(), GerritChangeVO.JSON_KEY_ID);
 
             if ((lastDate != null) && lastDate.equals(change.getLastUpdate())) {
                 return new BuildRepositoryChangesImpl(change.getLastRevision());
@@ -614,20 +589,16 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
 
         for (FileSet fileSet : fileSets) {
             if (!fileSet.getFile().equals(GIT_COMMIT_ACTION)) {
-                CommitFile file =
-                    new CommitFileImpl(change.getLastRevision(),
-                        fileSet.getFile());
+                CommitFile file = new CommitFileImpl(change.getLastRevision(), fileSet.getFile());
                 commit.addFile(file);
             }
         }
 
         commits.add(commit);
 
-        BuildRepositoryChanges buildChanges =
-            new BuildRepositoryChangesImpl(change.getLastRevision(), commits);
+        BuildRepositoryChanges buildChanges = new BuildRepositoryChangesImpl(change.getLastRevision(), commits);
 
-        bandanaManager.setValue(new GerritBandanaContext(),
-            GerritChangeVO.JSON_KEY_ID, change.getLastUpdate());
+        bandanaManager.setValue(new GerritBandanaContext(), GerritChangeVO.JSON_KEY_ID, change.getLastUpdate());
 
         return buildChanges;
     }
