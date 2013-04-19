@@ -27,6 +27,7 @@ import java.util.Set;
 
 import net.sf.json.JSONObject;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.atlassian.bamboo.repository.RepositoryException;
@@ -46,8 +47,14 @@ import com.sonyericsson.hudson.plugins.gerrit.gerritevents.workers.cmd.AbstractS
 /**
  * Facade for witing with ssh, gerrit-events, parsing JSON results, and Gerrit related data.
  */
+@SuppressWarnings("nls")
 public class GerritService {
 
+    /**
+     * Default query that is sent to the Gerrit when querying for changes to build. Can be overridden by user's configuration.
+     */
+    public static final String DEFAULT_QUERY = "is:open (-is:reviewed OR (-label:Verified=-1 -label:Verified=1))";
+    
     private static final Logger log = Logger.getLogger(GerritService.class);
 
     private GerritHandler gHandler = null;
@@ -283,15 +290,11 @@ public class GerritService {
      * @throws RepositoryException
      */
     public GerritChangeVO
-                    getOldestUnverifiedChange(String project) throws RepositoryException {
+                    getOldestUnverifiedChange(String project, String additionalQueryParams) throws RepositoryException {
         GerritChangeVO result = null;
 
         // Looks for changes that should be verified
-        String query =
-            String
-                .format(
-                    "project:%s is:open (-is:reviewed OR (-label:Verified=-1 -label:Verified=1))",
-                    project);
+        String query = String.format("project:%s %s", project, additionalQueryParams);
         List<JSONObject> jsonObjects = runGerritQuery(query);
 
         if (jsonObjects != null) {

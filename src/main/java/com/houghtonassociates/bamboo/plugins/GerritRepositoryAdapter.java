@@ -78,6 +78,7 @@ import com.sonyericsson.hudson.plugins.gerrit.gerritevents.ssh.SshConnectionFact
 /**
  * This class allows bamboo to use Gerrit as if it were a repository.
  */
+@SuppressWarnings("nls")
 public class GerritRepositoryAdapter extends AbstractStandaloneRepository
     implements AdvancedConfigurationAwareRepository, PushCapableRepository,
     BranchMergingAwareRepository, GerritConnectionConfig,
@@ -91,11 +92,13 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
     private static final String REPOSITORY_GERRIT_REPO_ID = "repositoryId";
     private static final String REPOSITORY_GERRIT_REPO_DISP_NAME =
         "repositoryName";
-
+ 
     private static final String REPOSITORY_GERRIT_REPOSITORY_HOSTNAME =
         "repository.gerrit.hostname";
     private static final String REPOSITORY_GERRIT_REPOSITORY_PORT =
         "repository.gerrit.port";
+    private static final String REPOSITORY_GERRIT_ADDITIONAL_QUERY =
+            "repository.gerrit.additional_query";
     private static final String REPOSITORY_GERRIT_PROJECT =
         "repository.gerrit.project";
     private static final String REPOSITORY_GERRIT_USERNAME =
@@ -134,6 +137,7 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
     private int port = 29418;
     private String project;
     private String username;
+    private String additionalQueryParams;
     private String sshKey;
     private String relativeSSHKeyFilePath;
     private File sshKeyFile = null;
@@ -174,7 +178,7 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
 
         String strHostName =
             buildConfiguration.getString(REPOSITORY_GERRIT_REPOSITORY_HOSTNAME,
-                "").trim();
+                GerritService.DEFAULT_QUERY).trim();
         buildConfiguration.setProperty(REPOSITORY_GERRIT_REPOSITORY_HOSTNAME,
             strHostName);
 
@@ -188,6 +192,9 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
             buildConfiguration.getString(REPOSITORY_GERRIT_PROJECT, "").trim();
         buildConfiguration.setProperty(REPOSITORY_GERRIT_PROJECT, strProject);
 
+        String strQuery =  buildConfiguration.getString(REPOSITORY_GERRIT_ADDITIONAL_QUERY, "").trim();
+        buildConfiguration.setProperty(REPOSITORY_GERRIT_ADDITIONAL_QUERY, strQuery);
+        
         String strUserName =
             buildConfiguration.getString(REPOSITORY_GERRIT_USERNAME, "").trim();
         buildConfiguration.setProperty(REPOSITORY_GERRIT_USERNAME, strUserName);
@@ -404,7 +411,9 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
                 .getString(REPOSITORY_GERRIT_SSH_PASSPHRASE));
         port = config.getInt(REPOSITORY_GERRIT_REPOSITORY_PORT, 29418);
         project = config.getString(REPOSITORY_GERRIT_PROJECT);
-
+        additionalQueryParams = config.getString(REPOSITORY_GERRIT_ADDITIONAL_QUERY);
+        if(StringUtils.isEmpty(additionalQueryParams))
+            additionalQueryParams = GerritService.DEFAULT_QUERY;
         useShallowClones =
             config.getBoolean(REPOSITORY_GERRIT_USE_SHALLOW_CLONES);
         useSubmodules = config.getBoolean(REPOSITORY_GERRIT_USE_SUBMODULES);
@@ -439,6 +448,7 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
             hostname);
         configuration.setProperty(REPOSITORY_GERRIT_USERNAME, username);
         configuration.setProperty(REPOSITORY_GERRIT_PROJECT, project);
+        configuration.setProperty(REPOSITORY_GERRIT_ADDITIONAL_QUERY, additionalQueryParams);
         configuration.setProperty(REPOSITORY_GERRIT_SSH_KEY, sshKey);
         configuration.setProperty(REPOSITORY_GERRIT_SSH_PASSPHRASE,
             encryptionService.encrypt(sshPassphrase));
@@ -589,7 +599,7 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
         List<Commit> commits = new ArrayList<Commit>();
 
         GerritChangeVO change =
-            getGerritDAO().getOldestUnverifiedChange(project);
+            getGerritDAO().getOldestUnverifiedChange(project, additionalQueryParams);
 
         if (change == null) {
             change = getGerritDAO().getLastChange(project);
@@ -658,12 +668,13 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
     @Override
     public boolean isRepositoryDifferent(Repository repository) {
         if (repository instanceof GerritRepositoryAdapter) {
-            GerritRepositoryAdapter gerrit =
-                (GerritRepositoryAdapter) repository;
-            return !new EqualsBuilder()
-                .append(this.hostname, gerrit.getHostname())
-                .append(this.project, gerrit.getProject())
-                .append(this.username, gerrit.getUsername()).isEquals();
+            GerritRepositoryAdapter gerrit = (GerritRepositoryAdapter)repository;
+            return !new EqualsBuilder()//
+                    .append(this.hostname, gerrit.getHostname())//
+                    .append(this.project, gerrit.getProject())//
+                    .append(this.additionalQueryParams, gerrit.getAdditionalQueryParams())//
+                    .append(this.username, gerrit.getUsername())//
+                    .isEquals();
         } else {
             return false;
         }
@@ -703,6 +714,10 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
 
     public String getProject() {
         return project;
+    }
+    
+    public String getAdditionalQueryParams(){
+        return additionalQueryParams;
     }
 
     @Override

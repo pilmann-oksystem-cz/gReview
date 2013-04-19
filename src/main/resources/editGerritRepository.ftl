@@ -22,6 +22,7 @@
 	[@ww.textfield labelKey='repository.gerrit.hostname' name='repository.gerrit.hostname' required='true' /]
 	[@ww.textfield labelKey='repository.gerrit.port' name='repository.gerrit.port' required='true' /]
 	[@ww.textfield labelKey='repository.gerrit.project' name='repository.gerrit.project' required='true' /]
+	[@ww.textfield labelKey='repository.gerrit.additional_query' name='repository.gerrit.additional_query' required='false' cssStyle='min-width: 500px' /]
 	
 	[@ww.textfield labelKey='repository.gerrit.username' name='repository.gerrit.username' required='true' /]
 	
