@@ -39,6 +39,7 @@ import com.atlassian.bamboo.commit.Commit;
 import com.atlassian.bamboo.commit.CommitFile;
 import com.atlassian.bamboo.commit.CommitFileImpl;
 import com.atlassian.bamboo.commit.CommitImpl;
+import com.atlassian.bamboo.container.BambooContainer;
 import com.atlassian.bamboo.plan.PlanKeys;
 import com.atlassian.bamboo.plan.branch.VcsBranch;
 import com.atlassian.bamboo.plugins.git.GitRepository;
@@ -587,7 +588,8 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
             buildLoggerManager.getBuildLogger(PlanKeys.getPlanKey(planKey));
         List<Commit> commits = new ArrayList<Commit>();
 
-        GerritChangeVO change = getGerritDAO().getLastUnverifiedChange(project);
+        GerritChangeVO change =
+            getGerritDAO().getOldestUnverifiedChange(project);
 
         if (change == null) {
             change = getGerritDAO().getLastChange(project);
@@ -733,6 +735,10 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
         GitRepoFactory.configureBranch(gitRepository, change
             .getCurrentPatchSet().getRef());
 
+        getGerritDAO().addComment(change.getNumber(),
+            change.getCurrentPatchSet().getNumber(),
+            getCommentMsg(buildContext));
+
         return gitRepository.retrieveSourceCode(buildContext, vcsRevisionKey,
             sourceDirectory);
     }
@@ -756,8 +762,24 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
         GitRepoFactory.configureBranch(gitRepository, change
             .getCurrentPatchSet().getRef());
 
+        getGerritDAO().addComment(change.getNumber(),
+            change.getCurrentPatchSet().getNumber(),
+            getCommentMsg(buildContext));
+
         return gitRepository.retrieveSourceCode(buildContext, vcsRevisionKey,
             sourceDirectory, depth);
+    }
+
+    private String getCommentMsg(BuildContext buildContext) {
+        StringBuilder msg = new StringBuilder("Bamboo build started: ");
+        msg.append(String.format("%s/browse/%s",
+            BambooContainer.getBambooContainer()
+                .getAdministrationConfiguration().getBaseUrl(), buildContext
+                .getParentBuildContext().getPlanResultKey()));
+        msg.append(String.format("\n\nThe build %s.", buildContext
+            .getTriggerReason().getNameForSentence()));
+
+        return msg.toString();
     }
 
     @Override

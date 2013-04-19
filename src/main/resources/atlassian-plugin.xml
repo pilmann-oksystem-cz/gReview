@@ -80,4 +80,9 @@
     <resource type="freemarker" name="edit" location="editGitwebRepositoryViewer.ftl"/>
     <resource type="freemarker" name="view" location="viewGitwebRepositoryViewer.ftl"/>
   </webRepositoryViewer>
+
+	<postChainAction key="gerritPostChainAction" name="Gerrit Post Build Full-Result Verification"
+			class="com.houghtonassociates.bamboo.plugins.processor.GerritPostChainAction">
+		<description>Post chain action that sets appropriate verification flag in Gerrit prior to build full-result.</description>
+	</postChainAction>
 </atlassian-plugin>
