@@ -158,9 +158,7 @@ public class GerritProcessor extends BaseConfigurableBuildPlugin implements
             (GerritRepositoryAdapter) rd.getRepository();
         final String revision =
             buildContext.getBuildChanges().getVcsRevisionKey(rd.getId());
-        final GerritService service =
-            new GerritService(gra.getHostname(), gra.getPort(),
-                gra.getGerritAuthentication());
+        final GerritService service = gra.getGerritDAO();
         final GerritChangeVO change = service.getChangeByRevision(revision);
 
         if (change == null) {

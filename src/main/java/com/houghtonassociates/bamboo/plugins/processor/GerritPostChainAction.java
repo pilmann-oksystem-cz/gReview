@@ -38,9 +38,7 @@ public class GerritPostChainAction implements PostChainAction {
 
         if (repositoryDefinition != null && repository != null) {
             // Obtain GerritService
-            GerritService service =
-                new GerritService(repository.getHostname(),
-                    repository.getPort(), repository.getGerritAuthentication());
+            GerritService service = repository.getGerritDAO();
 
             // Obtain Change's revision
             String revision =

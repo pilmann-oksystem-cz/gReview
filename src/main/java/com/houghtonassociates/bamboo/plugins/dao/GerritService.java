@@ -20,14 +20,9 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Set;
 
-import net.sf.json.JSONObject;
-
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.atlassian.bamboo.repository.RepositoryException;
@@ -43,6 +38,7 @@ import com.sonyericsson.hudson.plugins.gerrit.gerritevents.ssh.SshConnection;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.ssh.SshConnectionFactory;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.ssh.SshException;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.workers.cmd.AbstractSendCommandJob;
+import net.sf.json.JSONObject;
 
 /**
  * Facade for witing with ssh, gerrit-events, parsing JSON results, and Gerrit related data.
@@ -55,7 +51,15 @@ public class GerritService {
      */
     public static final String DEFAULT_QUERY = "is:open (-is:reviewed OR (-label:Verified=-1 -label:Verified=1))";
     
+    public static final String DEFAULT_VERIFIED_FLAG = "+1";
+
+    public static final String DEFAULT_UNVERIFIED_FLAG = "-1";
+
     private static final Logger log = Logger.getLogger(GerritService.class);
+
+    private final String verifiedFlag;
+
+    private final String unverifiedFlag;
 
     private GerritHandler gHandler = null;
     private GerritQueryHandler gQueryHandler = null;
@@ -64,17 +68,19 @@ public class GerritService {
     private int port = 29418;
     private Authentication auth = null;
 
-    public GerritService(String strHost, int port, File sshKeyFile,
-                         String strUsername, String phrase) {
-        auth = new Authentication(sshKeyFile, strUsername, phrase);
-        this.strHost = strHost;
-        this.port = port;
-    }
+    // public GerritService(String strHost, int port, File sshKeyFile,
+    // String strUsername, String phrase) {
+    // auth = new Authentication(sshKeyFile, strUsername, phrase);
+    // this.strHost = strHost;
+    // this.port = port;
+    // }
 
-    public GerritService(String strHost, int port, Authentication auth) {
+    public GerritService(String strHost, int port, Authentication auth, String verifiedFlag, String unverifiedFlag) {
         this.strHost = strHost;
         this.port = port;
         this.auth = auth;
+        this.verifiedFlag = verifiedFlag;
+        this.unverifiedFlag = unverifiedFlag;
     }
 
     public void testGerritConnection() throws RepositoryException {
@@ -96,49 +102,6 @@ public class GerritService {
         }
     } 
 
-    /*
-     * public GerritHandler manageGerritHandler(String sshKey, String strHost,
-     * int port, String strUsername, String phrase, boolean test,
-     * boolean reset)
-     * throws RepositoryException {
-     * this.updateCredentials(sshKey, strHost, strUsername, phrase);
-     *
-     * if (test)
-     * testGerritConnection(strHost, port);
-     *
-     * if (gHandler==null) {
-     * synchronized (GerritRepositoryAdapter.class) {
-     * gHandler=new GerritHandler(strHost, port, authentication,
-     * NUM_WORKER_THREADS);
-     * gHandler.addListener(this);
-     * gHandler.addListener(new ConnectionListener() {
-     *
-     * @Override
-     * public void connectionDown() {
-     * log.error("Gerrit connection down.");
-     * gHandler.shutdown(false);
-     * }
-     *
-     * @Override
-     * public void connectionEstablished() {
-     * log.info("Gerrit connection established!");
-     * }
-     * });
-     * }
-     * }
-     *
-     * if (reset) {
-     * if (gHandler.isAlive()) {
-     * gHandler.shutdown(true);
-     * }
-     *
-     * gHandler.start();
-     * }
-     *
-     * return gHandler;
-     * }
-     */
-
     private class GerritCmdProcessor extends AbstractSendCommandJob {
 
         protected GerritCmdProcessor(GerritConnectionConfig config) {
@@ -158,20 +121,23 @@ public class GerritService {
                 changeNumber, patchNumber));
     }
 
-    public boolean verifyChange(Boolean pass, Integer changeNumber,
-                                Integer patchNumber, String message) {
-        String command = "";
-
-        if (pass.booleanValue()) {
-            command = String.format( "gerrit review --message '%s' --verified +1 %s,%s",
-                    message, changeNumber.intValue(), patchNumber.intValue());
-        } else {
-            command = String.format( "gerrit review --message '%s' --verified -1 %s,%s",
-                    message, changeNumber.intValue(), patchNumber.intValue());
-        }
-
+    /**
+     * Called when build ends. Mark the change in Gerrit verified or not, depending on the build result.
+     * 
+     * @param pass
+     *            {@code true} if build was successfull, {@code false} otherwise
+     * @param changeNumber
+     *            number of the change that was built
+     * @param patchNumber
+     *            number of the patchset from a change that triggered the build
+     * @param message
+     *            comment to add
+     * @return {@code true} if the command was sent successfully, {@code false} otherwise
+     */
+    public boolean verifyChange(Boolean pass, Integer changeNumber, Integer patchNumber, String message) {
+        String command = String.format("gerrit review --message '%s' --verified %s %s,%s", message, pass ? verifiedFlag : unverifiedFlag,
+                changeNumber.intValue(), patchNumber.intValue());
         log.debug("Sending Command: " + command);
-
         return getGerritCmdProcessor().sendCommand(command);
     }
 
@@ -289,8 +255,7 @@ public class GerritService {
      * @return the oldest Gerrit's change that has not been verified yet
      * @throws RepositoryException
      */
-    public GerritChangeVO
-                    getOldestUnverifiedChange(String project, String additionalQueryParams) throws RepositoryException {
+    public GerritChangeVO getOldestUnverifiedChange(String project, String additionalQueryParams) throws RepositoryException {
         GerritChangeVO result = null;
 
         // Looks for changes that should be verified
@@ -298,8 +263,7 @@ public class GerritService {
         List<JSONObject> jsonObjects = runGerritQuery(query);
 
         if (jsonObjects != null) {
-            ListIterator<JSONObject> iterator =
-                jsonObjects.listIterator(jsonObjects.size() - 1);
+            ListIterator<JSONObject> iterator = jsonObjects.listIterator(jsonObjects.size() - 1);
             while (result == null && iterator.hasPrevious()) {
                 JSONObject jsonObject = iterator.previous();
 
@@ -375,7 +339,7 @@ public class GerritService {
         List<JSONObject> jsonObjects = runGerritQuery(query.toString());
 
         if (jsonObjects != null) {
-            log.info("Query result count: " + jsonObjects.size());
+            log.debug("Query result count: " + jsonObjects.size());
 
             for (JSONObject j : jsonObjects) {
                 if (j.containsKey(GerritChangeVO.JSON_KEY_PROJECT)) {

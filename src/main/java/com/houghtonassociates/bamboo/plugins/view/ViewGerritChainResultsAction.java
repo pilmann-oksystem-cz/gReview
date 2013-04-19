@@ -68,9 +68,7 @@ public class ViewGerritChainResultsAction extends ViewChainResult implements
 
             if (repo instanceof GerritRepositoryAdapter) {
                 GerritRepositoryAdapter gra = getRepository();
-                gerritService =
-                    new GerritService(gra.getHostname(), gra.getPort(),
-                        gra.getGerritAuthentication());
+                gerritService = gra.getGerritDAO();
             }
         }
 
