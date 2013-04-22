@@ -30,7 +30,6 @@ import com.houghtonassociates.bamboo.plugins.dao.GerritChangeVO.Approval;
 import com.houghtonassociates.bamboo.plugins.dao.GerritChangeVO.FileSet;
 import com.houghtonassociates.bamboo.plugins.dao.GerritChangeVO.PatchSet;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.GerritConnectionConfig;
-import com.sonyericsson.hudson.plugins.gerrit.gerritevents.GerritHandler;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.GerritQueryException;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.GerritQueryHandler;
 import com.sonyericsson.hudson.plugins.gerrit.gerritevents.ssh.Authentication;
@@ -61,7 +60,6 @@ public class GerritService {
 
     private final String unverifiedFlag;
 
-    private GerritHandler gHandler = null;
     private GerritQueryHandler gQueryHandler = null;
     private GerritCmdProcessor cmdProcessor = null;
     private String strHost;
@@ -216,8 +214,10 @@ public class GerritService {
             jsonObjects = getGerritQueryHandler().queryJava(query, true, true, true);
         } catch (SshException e) {
             throw new RepositoryException("SSH connection error", e);
-        } catch (IOException | GerritQueryException e) {
-            throw new RepositoryException(e.getMessage());
+        } catch (IOException e) {
+            throw new RepositoryException(e);
+        } catch (GerritQueryException e) {
+            throw new RepositoryException(e);
         }
 
         if (jsonObjects == null || jsonObjects.isEmpty()) {
