@@ -557,8 +557,10 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
         GerritChangeVO change = getGerritDAO().getOldestUnverifiedChange(project, additionalQueryParams);
 
         if (change == null) {
-            // no changes found with the configured criteria, fail the build
-            throw new RepositoryException(textProvider.getText("processor.gerrit.messages.build.error.nochanges"));
+            // no changes found with the configured criteria, fail the build !!WHY?
+            //throw new RepositoryException(textProvider.getText("processor.gerrit.messages.build.error.nochanges"));
+            // just return "no change"
+        	return new BuildRepositoryChangesImpl();
         }
 
         buildLogger.addBuildLogEntry(textProvider.getText("repository.gerrit.messages.ccRecover.completed"));
@@ -790,7 +792,8 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
 
     @Override
     public String getBranchIntegrationEditHtml() {
-        return gitRepository.getBranchIntegrationEditHtml();
+    	// no branch integration - gitRepository.getBranchIntegrationEditHtml() causes NPE
+        return null;
     }
 
     @Override
