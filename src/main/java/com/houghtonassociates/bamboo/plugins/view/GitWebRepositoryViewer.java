@@ -23,12 +23,12 @@ import java.util.Map;
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 import com.atlassian.bamboo.collections.ActionParametersMap;
 import com.atlassian.bamboo.commit.Commit;
 import com.atlassian.bamboo.commit.CommitFile;
 import com.atlassian.bamboo.repository.RepositoryData;
-import com.atlassian.bamboo.repository.RepositoryDefinition;
 import com.atlassian.bamboo.repository.RepositoryException;
 import com.atlassian.bamboo.resultsummary.ResultsSummary;
 import com.atlassian.bamboo.resultsummary.vcs.RepositoryChangeset;
@@ -38,7 +38,6 @@ import com.atlassian.bamboo.variable.CustomVariableContext;
 import com.atlassian.bamboo.webrepository.AbstractWebRepositoryViewer;
 import com.atlassian.bamboo.webrepository.CommitUrlProvider;
 import com.atlassian.bamboo.ww2.actions.build.admin.create.BuildConfiguration;
-import com.atlassian.util.concurrent.NotNull;
 import com.atlassian.util.concurrent.Nullable;
 import com.google.common.collect.Maps;
 import com.houghtonassociates.bamboo.plugins.GerritRepositoryAdapter;
@@ -266,9 +265,9 @@ public class GitWebRepositoryViewer extends AbstractWebRepositoryViewer
 
     @Override
     public String
-                    getHtmlForCommitsFull(ResultsSummary resultsSummary,
-                                          RepositoryChangeset repositoryChangeset,
-                                          RepositoryDefinition repositoryData) {
+                    getHtmlForCommitsFull(@NotNull ResultsSummary resultsSummary,
+                                          @NotNull RepositoryChangeset repositoryChangeset,
+                                          @NotNull RepositoryData repositoryData) {
         final Map<String, Object> context = new HashMap<String, Object>();
 
         context.put("buildResultsSummary", resultsSummary);
@@ -281,9 +280,9 @@ public class GitWebRepositoryViewer extends AbstractWebRepositoryViewer
 
     @Override
     public String
-                    getHtmlForCommitsSummary(ResultsSummary resultsSummary,
-                                             RepositoryChangeset repositoryChangeset,
-                                             RepositoryDefinition repositoryData,
+                    getHtmlForCommitsSummary(@NotNull ResultsSummary resultsSummary,
+                                             @NotNull RepositoryChangeset repositoryChangeset,
+                                             @NotNull RepositoryData repositoryData,
                                              int maxChanges) {
         final Map<String, Object> context = new HashMap<String, Object>();
 
@@ -297,22 +296,6 @@ public class GitWebRepositoryViewer extends AbstractWebRepositoryViewer
             templateRenderer.render(SUMMARY_COMMIT_VIEW_TEMPLATE, context);
 
         return result;
-    }
-
-    @Override
-    public String
-                    getHtmlForCommitsSummary(ResultsSummary resultsSummary,
-                                             RepositoryChangeset repositoryChangeset,
-                                             RepositoryDefinition repositoryDefinition) {
-        final Map<String, Object> context = new HashMap<String, Object>();
-
-        context.put("buildResultsSummary", resultsSummary);
-        context.put("repositoryChangeset", repositoryChangeset);
-        context.put("repositoryData", (RepositoryData) repositoryDefinition);
-        context.put("linkGenerator", this);
-        context.put("maxChanges", 2);
-
-        return templateRenderer.render(SUMMARY_COMMIT_VIEW_TEMPLATE, context);
     }
 
     /**

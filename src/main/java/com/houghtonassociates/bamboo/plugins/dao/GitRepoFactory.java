@@ -13,7 +13,7 @@ import com.atlassian.bamboo.ssh.SshProxyService;
 import com.atlassian.bamboo.v2.build.agent.capability.CapabilityContext;
 import com.atlassian.bamboo.ww2.actions.build.admin.create.BuildConfiguration;
 import com.atlassian.sal.api.message.I18nResolver;
-import com.opensymphony.xwork.TextProvider;
+import com.opensymphony.xwork2.TextProvider;
 
 /**
  * @author Jason Huntley

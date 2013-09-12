@@ -36,7 +36,7 @@ import com.atlassian.bamboo.ww2.actions.build.admin.create.BuildConfiguration;
 import com.houghtonassociates.bamboo.plugins.GerritRepositoryAdapter;
 import com.houghtonassociates.bamboo.plugins.dao.GerritChangeVO;
 import com.houghtonassociates.bamboo.plugins.dao.GerritService;
-import com.opensymphony.xwork.TextProvider;
+import com.opensymphony.xwork2.TextProvider;
 
 /**
  * Post processor which updates Gerrit after build completes

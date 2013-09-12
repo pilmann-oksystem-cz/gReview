@@ -694,8 +694,19 @@ public class GerritRepositoryAdapter extends AbstractStandaloneRepository
             change.getCurrentPatchSet().getNumber(),
             getCommentMsg(buildContext));
 
-        return gitRepository.retrieveSourceCode(buildContext, vcsRevisionKey,
-            sourceDirectory);
+        /* "hack" - new version of bamboo-git-plugin (probably 3.x.x) try to avoid working in detached head
+         * so it tries to switch to branch changes/x/y/z which is not branch but only a ref it leads to RepositoryException
+         * 
+         * so first retrieveSourceCode has to "fetch" changes from remote (but checkout will lead to RE)
+         * while the second retrieveSourceCode work with revision hash and checkout it, since it's already fetched
+         * !! highly implementaion dependent - easy to be broken by future version of bamboo-git-plugin
+         */
+        try {
+            return gitRepository.retrieveSourceCode(buildContext, vcsRevisionKey, sourceDirectory);
+        } catch (RepositoryException re) {
+            GitRepoFactory.configureBranch(gitRepository, "");
+            return gitRepository.retrieveSourceCode(buildContext, vcsRevisionKey, sourceDirectory);
+        }
     }
 
     @Override
